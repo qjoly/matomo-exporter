@@ -1,2 +1,3 @@
 matomo-api>=1.0b5
 requests>=2.31.0
+prometheus_client>=0.20.0
