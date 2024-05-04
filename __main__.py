@@ -28,7 +28,16 @@ if not URL or not TOKEN:
 api = ma.MatomoApi(URL, TOKEN)
 
 NUMBER_SITES = Gauge("number_of_sites", "Number of sites")
-NUMBER_VISITS = Gauge("number_of_visits", "Number of visits", ["site_name"])
+NUMBER_VISITS_YESTERDAY = Gauge(
+    "number_of_visits_yesterday", "Number of visits", ["site_name"]
+)
+NUMBER_UNIQ_VISITORS_YESTERDAY = Gauge(
+    "number_uniq_visitors_yesterday", "Number of visits", ["site_name"]
+)
+NUMBER_VISITS_TODAY = Gauge("number_of_visits_today", "Number of visits", ["site_name"])
+NUMBER_UNIQ_VISITORS_TODAY = Gauge(
+    "number_uniq_visitors_today", "Number of visits", ["site_name"]
+)
 
 
 def get_number_of_sites():
@@ -38,7 +47,6 @@ def get_number_of_sites():
         qry_result = api.SitesManager().getAllSites(pars)
         return len(qry_result.json())
     except Exception as e:
-        print(e)
         return -1
 
 
@@ -46,10 +54,11 @@ def get_name_of_site(site_id):
     pars = ma.format.json | ma.translateColumnNames() | ma.idSite.one_or_more(site_id)
     try:
         qry_result = api.SitesManager().getSiteFromId(pars).json()
-        return qry_result.json()[0].get("name")
+        return qry_result.get("name")
     except Exception as e:
         logging.error(e, "Error getting site name")
         return "Unknown"
+
 
 def get_all_sites_ids():
     pars = ma.format.json | ma.translateColumnNames()
@@ -57,12 +66,24 @@ def get_all_sites_ids():
     return [site.get("idsite") for site in qry_result.json()]
 
 
-def get_number_of_visits(site_id):
+def get_number_of_visits_yesterday(site_id):
     pars = (
         ma.format.json
         | ma.translateColumnNames()
         | ma.idSite.one_or_more(site_id)
         | ma.date.yesterday
+        | ma.period.day
+    )
+    qry_result = api.VisitsSummary().get(pars)
+    return qry_result.json()
+
+
+def get_number_of_visits_today(site_id):
+    pars = (
+        ma.format.json
+        | ma.translateColumnNames()
+        | ma.idSite.one_or_more(site_id)
+        | ma.date.today
         | ma.period.day
     )
     qry_result = api.VisitsSummary().get(pars)
@@ -76,18 +97,25 @@ if __name__ == "__main__":
         NUMBER_SITES.set(get_number_of_sites())
         print(get_all_sites_ids())
         for site_id in get_all_sites_ids():
-            print("Site ID: ", site_id)
-            site_name = get_name_of_site(site_id)
-            site_data = get_number_of_visits(site_id)
-            print(site_data)
-            print(site_name, site_data.get("nb_visits"))
-            NUMBER_VISITS.labels(site_name).set(site_data.get("nb_visits"))
+            logging.debug(f"Getting data for site {site_id}")
+            try:
+                site_name = get_name_of_site(site_id)
+                site_data = get_number_of_visits_yesterday(site_id)
+                print(site_data)
+                NUMBER_VISITS_YESTERDAY.labels(site_name).set(
+                    site_data.get("nb_visits")
+                )
+                NUMBER_UNIQ_VISITORS_YESTERDAY.labels(site_name).set(
+                    site_data.get("nb_uniq_visitors")
+                )
+                site_data = get_number_of_visits_today(site_id)
+                NUMBER_VISITS_TODAY.labels(site_name).set(site_data.get("nb_visits"))
+                NUMBER_UNIQ_VISITORS_TODAY.labels(site_name).set(
+                    site_data.get("nb_uniq_visitors")
+                )
+            except:
+                logging.error(f"Error getting data for site {site_id}")
+                continue
         time.sleep(REFRESH)
 
 
-# pars = ma.format.json | ma.language.fr | ma.translateColumnNames() \
-#        | ma.idSite.one_or_more(1) | ma.date.yesterday | ma.period.day
-
-# qry_result = api.VisitsSummary().get(pars)
-
-# print(qry_result.json())
