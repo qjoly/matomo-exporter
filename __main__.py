@@ -178,12 +178,15 @@ def get_monthly_most_visited_pages(site_id, period):
         if type(data) is dict and data.get("subtable"):
             print_data(data.get("subtable"), parent + "/" + data.get("label"))
             dict_data[parent + "/" + data.get("label")] = data.get("nb_visits")
+        elif type(data) is dict:
+            dict_data[parent + data.get("label")] = data.get("nb_visits")
         elif type(data) is list:
             for i in data:
                 if i.get("subtable"):
                     print_data(i.get("subtable"), parent + "/" + i.get("label"))
                     dict_data[parent + "/" + i.get("label")] = i.get("nb_visits")
 
+    logging.debug("Number of pages: %s", len(data))
     i = 0
     while i < len(data):
         print_data(data[i], "")
@@ -191,65 +194,69 @@ def get_monthly_most_visited_pages(site_id, period):
     return dict_data
 
 
+def update_metrics():
+    NUMBER_SITES.set(get_number_of_sites())
+    for site_id in get_all_sites_ids():
+        logging.debug(f"Getting data for site {site_id}")
+        try:
+            site_name = get_name_of_site(site_id)
+            site_data_yesterday = get_number_of_visits_yesterday(site_id)
+
+            NUMBER_VISITS_YESTERDAY.labels(site_name).set(
+                site_data_yesterday.get("nb_visits")
+            )
+            NUMBER_UNIQ_VISITORS_YESTERDAY.labels(site_name).set(
+                site_data_yesterday.get("nb_uniq_visitors")
+            )
+            NUMBER_BOUNCING_RATE_YESTERDAY.labels(site_name).set(
+                site_data_yesterday.get("bounce_count")
+            )
+            NUMBER_ACTIONS_YESTERDAY.labels(site_name).set(
+                site_data_yesterday.get("nb_actions")
+            )
+
+            site_data_current = get_number_of_visits_current(site_id)
+            NUMBER_VISITS_CURRENT.labels(site_name).set(
+                site_data_current.get("nb_visits")
+            )
+            NUMBER_UNIQ_VISITORS_CURRENT.labels(site_name).set(
+                site_data_current.get("nb_uniq_visitors")
+            )
+            NUMBER_BOUNCING_RATE_CURRENT.labels(site_name).set(
+                site_data_current.get("bounce_count")
+            )
+
+            NUMBER_ACTIONS_CURRENT.labels(site_name).set(
+                site_data_current.get("nb_actions")
+            )
+
+            monthly_visited_pages = get_monthly_most_visited_pages(
+                site_id, ma.period.month
+            )
+
+            for page in monthly_visited_pages.keys():
+                NUMBER_VISITS_PER_PAGE_CURRENT_MONTH.labels(site_name, page).set(
+                    monthly_visited_pages[page]
+                )
+
+            yearly_visited_pages = get_monthly_most_visited_pages(
+                site_id, ma.period.year
+            )
+
+            for page in yearly_visited_pages.keys():
+                NUMBER_VISITS_PAR_PAGE_CURRENT_YEAR.labels(site_name, page).set(
+                    yearly_visited_pages[page]
+                )
+
+        except FileExistsError as e:
+            logging.error(f"Error getting data for site {site_id}, {e}")
+            continue
+
+
 if __name__ == "__main__":
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
 
     while True:
-        NUMBER_SITES.set(get_number_of_sites())
-        for site_id in get_all_sites_ids():
-            logging.debug(f"Getting data for site {site_id}")
-            try:
-                site_name = get_name_of_site(site_id)
-                site_data_yesterday = get_number_of_visits_yesterday(site_id)
-
-                NUMBER_VISITS_YESTERDAY.labels(site_name).set(
-                    site_data_yesterday.get("nb_visits")
-                )
-                NUMBER_UNIQ_VISITORS_YESTERDAY.labels(site_name).set(
-                    site_data_yesterday.get("nb_uniq_visitors")
-                )
-                NUMBER_BOUNCING_RATE_YESTERDAY.labels(site_name).set(
-                    site_data_yesterday.get("bounce_count")
-                )
-                NUMBER_ACTIONS_YESTERDAY.labels(site_name).set(
-                    site_data_yesterday.get("nb_actions")
-                )
-
-                site_data_current = get_number_of_visits_current(site_id)
-                NUMBER_VISITS_CURRENT.labels(site_name).set(
-                    site_data_current.get("nb_visits")
-                )
-                NUMBER_UNIQ_VISITORS_CURRENT.labels(site_name).set(
-                    site_data_current.get("nb_uniq_visitors")
-                )
-                NUMBER_BOUNCING_RATE_CURRENT.labels(site_name).set(
-                    site_data_current.get("bounce_count")
-                )
-
-                NUMBER_ACTIONS_CURRENT.labels(site_name).set(
-                    site_data_current.get("nb_actions")
-                )
-
-                monthly_visited_pages = get_monthly_most_visited_pages(
-                    site_id, ma.period.month
-                )
-
-                for page in monthly_visited_pages.keys():
-                    NUMBER_VISITS_PER_PAGE_CURRENT_MONTH.labels(site_name, page).set(
-                        monthly_visited_pages[page]
-                    )
-
-                yearly_visited_pages = get_monthly_most_visited_pages(
-                    site_id, ma.period.year
-                )
-
-                for page in yearly_visited_pages.keys():
-                    NUMBER_VISITS_PAR_PAGE_CURRENT_YEAR.labels(site_name, page).set(
-                        yearly_visited_pages[page]
-                    )
-
-            except FileExistsError as e:
-                logging.error(f"Error getting data for site {site_id}, {e}")
-                continue
+        update_metrics()
         time.sleep(SCRAPE_INTERVAL)
