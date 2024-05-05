@@ -1,0 +1,12 @@
+services:
+  matomo-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/qjoly/matomo-exporter:latest
+    ports:
+      - 9000:9000
+    env_file: .env
+    environment:
+      - LOG_LEVEL=DEBUG
+      - SCRAPE_INTERVAL=60
