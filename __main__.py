@@ -1,11 +1,38 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# This is a simple Prometheus exporter for Matomo.
+# It uses the Matomo API (using the matomo_api library) to get the data and Prometheus Python client to expose the metrics.
+# The exporter exposes the following metrics:
+# - number_of_sites: Number of sites in the Matomo instance
+# - number_of_visits_yesterday: Number of visits yesterday
+# - number_uniq_visitors_yesterday: Number of unique visitors yesterday
+# - number_of_visits_current_day: Number of visits today
+# - number_uniq_visitors_current_day: Number of unique visitors today
+# - nu
 
 import os, time
 import matomo_api as ma
 import argparse
-from prometheus_client import start_http_server, Counter, REGISTRY, Gauge
+from prometheus_client import start_http_server
+from metrics import (
+    NUMBER_SITES,
+    NUMBER_VISITS_YESTERDAY,
+    NUMBER_UNIQ_VISITORS_YESTERDAY,
+    NUMBER_VISITS_CURRENT,
+    NUMBER_UNIQ_VISITORS_CURRENT,
+    NUMBER_BOUNCING_RATE_CURRENT,
+    NUMBER_ACTIONS_CURRENT,
+    NUMBER_BOUNCING_RATE_YESTERDAY,
+    NUMBER_ACTIONS_YESTERDAY,
+    NUMBER_VISITS_PER_PAGE_CURRENT_MONTH,
+    NUMBER_VISITS_PAR_PAGE_CURRENT_YEAR,
+)
 import logging
 
+############
+# LOGGING  #
+############
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
 if LOG_LEVEL == "DEBUG":
@@ -21,11 +48,16 @@ else:
 
 logging.basicConfig(level=level, format="%(asctime)s - %(message)s")
 
-
+#############
+# CONSTANTS #
+#############
 DEFAULT_PORT = 9000
 DEFAULT_SCRAPE_INTERVAL = 30
 DEFAULT_IP = "0.0.0.0"
 
+#############
+# ARGUMENTS #
+#############
 parser = argparse.ArgumentParser()
 parser.add_argument("--url", help="Specify the Matomo URL")
 parser.add_argument("--token", help="Specify the Matomo token")
@@ -37,6 +69,11 @@ args = parser.parse_args()
 URL = args.url if args.url else os.environ.get("MATOMO_URL")
 TOKEN = args.token if args.token else os.environ.get("MATOMO_TOKEN")
 
+#################
+# SET VARIABLES #
+#################
+
+# Set the port and IP address
 if args.port:
     PORT = int(args.port)
 elif os.environ.get("PORT"):
@@ -51,6 +88,7 @@ elif os.environ.get("IP"):
 else:
     IP = DEFAULT_IP
 
+# Set the scrape interval
 if args.scrape_interval:
     SCRAPE_INTERVAL = int(args.scrape_interval)
 elif os.environ.get("SCRAPE_INTERVAL"):
@@ -64,48 +102,8 @@ if not URL or not TOKEN:
 
 api = ma.MatomoApi(URL, TOKEN)
 
-NUMBER_SITES = Gauge("number_of_sites", "Number of sites")
-NUMBER_VISITS_YESTERDAY = Gauge(
-    "number_of_visits_yesterday", "Number of visits", ["site_name"]
-)
-NUMBER_UNIQ_VISITORS_YESTERDAY = Gauge(
-    "number_uniq_visitors_yesterday", "Number of visits", ["site_name"]
-)
-NUMBER_VISITS_CURRENT = Gauge(
-    "number_of_visits_current_day", "Number of visits", ["site_name"]
-)
-NUMBER_UNIQ_VISITORS_CURRENT = Gauge(
-    "number_uniq_visitors_current_day", "Number of visits", ["site_name"]
-)
-
-NUMBER_BOUNCING_RATE_CURRENT = Gauge(
-    "percentage_bouncing_rate_current_day", "Bouncing rate", ["site_name"]
-)
-NUMBER_ACTIONS_CURRENT = Gauge(
-    "number_of_actions_current_day", "Number of actions", ["site_name"]
-)
-
-NUMBER_BOUNCING_RATE_YESTERDAY = Gauge(
-    "percentage_bouncing_rate_yesterday", "Bouncing rate", ["site_name"]
-)
-NUMBER_ACTIONS_YESTERDAY = Gauge(
-    "number_of_actions_yesterday", "Number of actions", ["site_name"]
-)
-
-NUMBER_VISITS_PER_PAGE_CURRENT_MONTH = Gauge(
-    "number_of_visited_pages_current_month",
-    "Number of visited pages",
-    ["site_name", "page"],
-)
-
-NUMBER_VISITS_PAR_PAGE_CURRENT_YEAR = Gauge(
-    "number_of_visited_pages_current_yearly",
-    "Number of visited pages",
-    ["site_name", "page"],
-)
-
-
 def get_number_of_sites():
+    """Get the number of sites in the Matomo instance"""
     logging.debug("Getting number of sites")
     pars = ma.format.json | ma.translateColumnNames()
     try:
@@ -116,6 +114,7 @@ def get_number_of_sites():
 
 
 def get_name_of_site(site_id):
+    """Get the name of a site given its ID"""
     pars = ma.format.json | ma.translateColumnNames() | ma.idSite.one_or_more(site_id)
     try:
         qry_result = api.SitesManager().getSiteFromId(pars).json()
@@ -126,12 +125,14 @@ def get_name_of_site(site_id):
 
 
 def get_all_sites_ids():
+    """Get the IDs of all sites in the Matomo instance"""
     pars = ma.format.json | ma.translateColumnNames()
     qry_result = api.SitesManager().getAllSites(pars)
     return [site.get("idsite") for site in qry_result.json()]
 
 
 def get_number_of_visits_yesterday(site_id):
+    """Get the number of visits yesterday for a given site"""
     pars = (
         ma.format.json
         | ma.translateColumnNames()
@@ -168,13 +169,12 @@ def get_all_pages(site_id, period):
     return qry_result.json()
 
 
-def get_monthly_most_visited_pages(site_id, period):
+def get_most_visited_pages(site_id, period):
     data = get_all_pages(site_id, period)
 
     dict_data = {}
-
+    
     def print_data(data, parent=""):
-        type_data = type(data)
         if type(data) is dict and data.get("subtable"):
             print_data(data.get("subtable"), parent + "/" + data.get("label"))
             dict_data[parent + "/" + data.get("label")] = data.get("nb_visits")
@@ -188,13 +188,16 @@ def get_monthly_most_visited_pages(site_id, period):
 
     logging.debug("Number of pages: %s", len(data))
     i = 0
+    # While there are more pages to process, keep going
     while i < len(data):
+        """Print the data recursively and store it in a dictionary"""
         print_data(data[i], "")
         i += 1
     return dict_data
 
 
 def update_metrics():
+    """Update the Prometheus metrics with the data from the Matomo API"""
     NUMBER_SITES.set(get_number_of_sites())
     for site_id in get_all_sites_ids():
         logging.debug(f"Getting data for site {site_id}")
@@ -230,18 +233,14 @@ def update_metrics():
                 site_data_current.get("nb_actions")
             )
 
-            monthly_visited_pages = get_monthly_most_visited_pages(
-                site_id, ma.period.month
-            )
+            monthly_visited_pages = get_most_visited_pages(site_id, ma.period.month)
 
             for page in monthly_visited_pages.keys():
                 NUMBER_VISITS_PER_PAGE_CURRENT_MONTH.labels(site_name, page).set(
                     monthly_visited_pages[page]
                 )
 
-            yearly_visited_pages = get_monthly_most_visited_pages(
-                site_id, ma.period.year
-            )
+            yearly_visited_pages = get_most_visited_pages(site_id, ma.period.year)
 
             for page in yearly_visited_pages.keys():
                 NUMBER_VISITS_PAR_PAGE_CURRENT_YEAR.labels(site_name, page).set(
@@ -254,6 +253,7 @@ def update_metrics():
 
 
 if __name__ == "__main__":
+    """Main function"""
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
 
