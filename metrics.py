@@ -1,3 +1,5 @@
+""" Metrics for the Matomo exporter """
+
 from prometheus_client import Gauge
 
 NUMBER_SITES = Gauge("number_of_sites", "Number of sites")
@@ -15,7 +17,7 @@ NUMBER_ACTIONS = Gauge(
 )
 
 NUMBER_VISITS_PER_PAGE = Gauge(
-    "number_of_visit_per_page",
+    "number_of_visits_per_page",
     "Number of visits per page",
     ["site_name", "page", "period"],
 )

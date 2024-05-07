@@ -209,6 +209,7 @@ def update_metrics():
             site_name = get_name_of_site(site_id)
             site_data_yesterday = get_number_of_visits_yesterday(site_id)
 
+
             NUMBER_VISITS.labels(site_name, "previous_day").set(
                 site_data_yesterday.get("nb_visits")
             )
@@ -238,39 +239,31 @@ def update_metrics():
             )
 
             daily_visited_pages = get_most_visited_pages(site_id, ma.period.day)
-            for page in daily_visited_pages.keys():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "day").set(
-                    daily_visited_pages[page]
-                )
+            for page, visits in daily_visited_pages.items():
+                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "day").set(visits)
 
             monthly_visited_pages = get_most_visited_pages(site_id, ma.period.month)
-
-            for page in monthly_visited_pages.keys():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "month").set(
-                    monthly_visited_pages[page]
-                )
+            for page, visits in monthly_visited_pages.items():
+                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "month").set(visits)
 
             yearly_visited_pages = get_most_visited_pages(site_id, ma.period.year)
+            for page, visits in yearly_visited_pages.items():
+                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "year").set(visits)
 
-            for page in yearly_visited_pages.keys():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "year").set(
-                    yearly_visited_pages[page]
-                )
-
-            for os in visitors_details_os_versions(site_id, ma.period.day):
+            for os_visitor in visitors_details_os_versions(site_id, ma.period.day):
                 NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os.get("label"), "day"
-                ).set(os.get("nb_visits"))
+                    site_name, os_visitor.get("label"), "day"
+                ).set(os_visitor.get("nb_visits"))
 
-            for os in visitors_details_os_versions(site_id, ma.period.month):
+            for os_visitor in visitors_details_os_versions(site_id, ma.period.month):
                 NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os.get("label"), "month"
-                ).set(os.get("nb_visits"))
+                    site_name, os_visitor.get("label"), "month"
+                ).set(os_visitor.get("nb_visits"))
 
-            for os in visitors_details_os_versions(site_id, ma.period.year):
+            for os_visitor in visitors_details_os_versions(site_id, ma.period.year):
                 NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os.get("label"), "year"
-                ).set(os.get("nb_visits"))
+                    site_name, os_visitor.get("label"), "year"
+                ).set(os_visitor.get("nb_visits"))
 
         except FileExistsError as e:
             logging.error(f"Error getting data for site {site_id}, {e}")
