@@ -22,6 +22,7 @@ from metrics import (
     NUMBER_ACTIONS,
     NUMBER_VISITS_PER_PAGE,
     NUMBER_VISITORS_PER_OS_VERSION,
+    NUMBER_VISITORS_PER_COUNTRY,
 )
 import logging
 
@@ -31,17 +32,17 @@ import logging
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
 if LOG_LEVEL == "DEBUG":
-    level = 10
+    LEVEL = 10
 elif LOG_LEVEL == "INFO":
-    level = 20
+    LEVEL = 20
 elif LOG_LEVEL == "WARNING":
-    level = 30
+    LEVEL = 30
 elif LOG_LEVEL == "ERROR":
-    level = 40
+    LEVEL = 40
 else:
-    level = 20
+    LEVEL = 20
 
-logging.basicConfig(level=level, format="%(asctime)s - %(message)s")
+logging.basicConfig(level=LEVEL, format="%(asctime)s - %(message)s")
 
 #############
 # CONSTANTS #
@@ -105,7 +106,7 @@ def get_number_of_sites():
     try:
         qry_result = api.SitesManager().getAllSites(pars)
         return len(qry_result.json())
-    except:
+    except Exception:
         return -1
 
 
@@ -127,14 +128,14 @@ def get_all_sites_ids():
     return [site.get("idsite") for site in qry_result.json()]
 
 
-def get_number_of_visits_yesterday(site_id):
+def get_number_of_visits(site_id, day, period=ma.period.day):
     """Get the number of visits yesterday for a given site"""
     pars = (
         ma.format.json
         | ma.translateColumnNames()
         | ma.idSite.one_or_more(site_id)
-        | ma.date.yesterday
-        | ma.period.day
+        | day
+        | period
     )
     qry_result = api.VisitsSummary().get(pars)
     return qry_result.json()
@@ -173,18 +174,26 @@ def visitors_details_os_versions(site_id, period):
     return qry_result.json()
 
 
+def visitors_details_country(site_id, period):
+    """Get the details of country used by visitors for a given site and period"""
+    pars = ma.format.json | ma.idSite.one_or_more(site_id) | ma.date.today | period
+    qry_result = api.UserCountry().getCountry(pars)
+
+    return qry_result.json()
+
+
 def get_most_visited_pages(site_id, period):
     data = get_all_pages(site_id, period)
 
     dict_data = {}
 
     def print_data(data, parent=""):
-        if type(data) is dict and data.get("subtable"):
+        if isinstance(data, dict) and data.get("subtable"):
             print_data(data.get("subtable"), parent + "/" + data.get("label"))
             dict_data[parent + "/" + data.get("label")] = data.get("nb_visits")
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             dict_data[parent + data.get("label")] = data.get("nb_visits")
-        elif type(data) is list:
+        elif isinstance(data, list):
             for i in data:
                 if i.get("subtable"):
                     print_data(i.get("subtable"), parent + "/" + i.get("label"))
@@ -192,9 +201,7 @@ def get_most_visited_pages(site_id, period):
 
     logging.debug("Number of pages: %s", len(data))
     i = 0
-    # While there are more pages to process, keep going
     while i < len(data):
-        """Print the data recursively and store it in a dictionary"""
         print_data(data[i], "")
         i += 1
     return dict_data
@@ -204,24 +211,25 @@ def update_metrics():
     """Update the Prometheus metrics with the data from the Matomo API"""
     NUMBER_SITES.set(get_number_of_sites())
     for site_id in get_all_sites_ids():
-        logging.debug(f"Getting data for site {site_id}")
+        logging.debug("Getting data for site %s", site_id)
         try:
             site_name = get_name_of_site(site_id)
-            site_data_yesterday = get_number_of_visits_yesterday(site_id)
 
+            for metric in [["day", ma.date.today], ["previous_day", ma.date.yesterday]]:
+                site_data = get_number_of_visits(site_id, metric[1])
 
-            NUMBER_VISITS.labels(site_name, "previous_day").set(
-                site_data_yesterday.get("nb_visits")
-            )
-            NUMBER_UNIQ_VISITORS.labels(site_name, "previous_day").set(
-                site_data_yesterday.get("nb_uniq_visitors")
-            )
-            NUMBER_BOUNCING_RATE.labels(site_name, "previous_day").set(
-                site_data_yesterday.get("bounce_count")
-            )
-            NUMBER_ACTIONS.labels(site_name, "previous_day").set(
-                site_data_yesterday.get("nb_actions")
-            )
+                NUMBER_VISITS.labels(site_name, metric[0]).set(
+                    site_data.get("nb_visits")
+                )
+                NUMBER_UNIQ_VISITORS.labels(site_name, metric[0]).set(
+                    site_data.get("nb_uniq_visitors")
+                )
+                NUMBER_BOUNCING_RATE.labels(site_name, metric[0]).set(
+                    site_data.get("bounce_count")
+                )
+                NUMBER_ACTIONS.labels(site_name, metric[0]).set(
+                    site_data.get("nb_actions")
+                )
 
             site_data_current = get_number_of_visits_current(site_id)
             NUMBER_VISITS.labels(site_name, "day").set(
@@ -238,35 +246,26 @@ def update_metrics():
                 site_data_current.get("nb_actions")
             )
 
-            daily_visited_pages = get_most_visited_pages(site_id, ma.period.day)
-            for page, visits in daily_visited_pages.items():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "day").set(visits)
-
-            monthly_visited_pages = get_most_visited_pages(site_id, ma.period.month)
-            for page, visits in monthly_visited_pages.items():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "month").set(visits)
-
-            yearly_visited_pages = get_most_visited_pages(site_id, ma.period.year)
-            for page, visits in yearly_visited_pages.items():
-                NUMBER_VISITS_PER_PAGE.labels(site_name, page, "year").set(visits)
-
-            for os_visitor in visitors_details_os_versions(site_id, ma.period.day):
-                NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os_visitor.get("label"), "day"
-                ).set(os_visitor.get("nb_visits"))
-
-            for os_visitor in visitors_details_os_versions(site_id, ma.period.month):
-                NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os_visitor.get("label"), "month"
-                ).set(os_visitor.get("nb_visits"))
-
-            for os_visitor in visitors_details_os_versions(site_id, ma.period.year):
-                NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os_visitor.get("label"), "year"
-                ).set(os_visitor.get("nb_visits"))
+            for metric in [
+                ["day", ma.period.day],
+                ["month", ma.period.month],
+                ["year", ma.period.year],
+            ]:
+                for country_visitor in visitors_details_country(site_id, metric[1]):
+                    NUMBER_VISITORS_PER_COUNTRY.labels(
+                        site_name, country_visitor.get("label"), metric[0]
+                    ).set(country_visitor.get("nb_visits"))
+                for os_visitor in visitors_details_os_versions(site_id, metric[1]):
+                    NUMBER_VISITORS_PER_OS_VERSION.labels(
+                        site_name, os_visitor.get("label"), metric[0]
+                    ).set(os_visitor.get("nb_visits"))
+                for page, visits in get_most_visited_pages(site_id, metric[1]).items():
+                    NUMBER_VISITS_PER_PAGE.labels(site_name, page, metric[0]).set(
+                        visits
+                    )
 
         except FileExistsError as e:
-            logging.error(f"Error getting data for site {site_id}, {e}")
+            logging.error("Error getting data for site %s, %s", site_id, e)
             continue
 
 
@@ -275,7 +274,7 @@ if __name__ == "__main__":
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
 
-    visitors_details_os_versions(1, ma.period.month)
+    print(visitors_details_country(1, ma.period.month))
 
     while True:
         update_metrics()

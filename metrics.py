@@ -27,3 +27,9 @@ NUMBER_VISITORS_PER_OS_VERSION = Gauge(
     "Number of visitors per OS version",
     ["site_name", "os_version", "period"],
 )
+
+NUMBER_VISITORS_PER_COUNTRY = Gauge(
+    "number_of_visitors_per_country",
+    "Number of visitors per country",
+    ["site_name", "country", "period"],
+)
