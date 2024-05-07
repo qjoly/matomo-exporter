@@ -2,18 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # This is a simple Prometheus exporter for Matomo.
-# It uses the Matomo API (using the matomo_api library) to get the data and Prometheus Python client to expose the metrics.
-# The exporter exposes the following metrics:
-# - number_of_sites: Number of sites in the Matomo instance
-# - number_of_visits_yesterday: Number of visits yesterday
-# - number_uniq_visitors_yesterday: Number of unique visitors yesterday
-# - number_of_visits_current_day: Number of visits today
-# - number_uniq_visitors_current_day: Number of unique visitors today
-# - nu
+# It uses the Matomo API (using the matomo_api library) to get the data.
 
-import os, time
-import matomo_api as ma
+
+import os
+import time
 import argparse
+import matomo_api as ma
 from prometheus_client import start_http_server
 from metrics import (
     NUMBER_SITES,
@@ -102,6 +97,7 @@ if not URL or not TOKEN:
 
 api = ma.MatomoApi(URL, TOKEN)
 
+
 def get_number_of_sites():
     """Get the number of sites in the Matomo instance"""
     logging.debug("Getting number of sites")
@@ -109,7 +105,7 @@ def get_number_of_sites():
     try:
         qry_result = api.SitesManager().getAllSites(pars)
         return len(qry_result.json())
-    except Exception as e:
+    except:
         return -1
 
 
@@ -169,10 +165,19 @@ def get_all_pages(site_id, period):
     return qry_result.json()
 
 
+def visitors_details_os_versions(site_id, period):
+    """Get the details of OS used by visitors for a given site and period"""
+    pars = ma.format.json | ma.idSite.one_or_more(site_id) | ma.date.today | period
+    qry_result = api.DevicesDetection().getOsVersions(pars)
+
+    return qry_result.json()
+
+
 def get_most_visited_pages(site_id, period):
     data = get_all_pages(site_id, period)
 
     dict_data = {}
+
     def print_data(data, parent=""):
         if type(data) is dict and data.get("subtable"):
             print_data(data.get("subtable"), parent + "/" + data.get("label"))
@@ -218,17 +223,17 @@ def update_metrics():
             )
 
             site_data_current = get_number_of_visits_current(site_id)
-            NUMBER_VISITS.labels(site_name, "now").set(
+            NUMBER_VISITS.labels(site_name, "day").set(
                 site_data_current.get("nb_visits")
             )
-            NUMBER_UNIQ_VISITORS.labels(site_name, "now").set(
+            NUMBER_UNIQ_VISITORS.labels(site_name, "day").set(
                 site_data_current.get("nb_uniq_visitors")
             )
-            NUMBER_BOUNCING_RATE.labels(site_name, "now").set(
+            NUMBER_BOUNCING_RATE.labels(site_name, "day").set(
                 site_data_current.get("bounce_count")
             )
 
-            NUMBER_ACTIONS.labels(site_name, "now").set(
+            NUMBER_ACTIONS.labels(site_name, "day").set(
                 site_data_current.get("nb_actions")
             )
 
@@ -254,7 +259,7 @@ def update_metrics():
 
             for os in visitors_details_os_versions(site_id, ma.period.day):
                 NUMBER_VISITORS_PER_OS_VERSION.labels(
-                    site_name, os.get("label"), "now"
+                    site_name, os.get("label"), "day"
                 ).set(os.get("nb_visits"))
 
             for os in visitors_details_os_versions(site_id, ma.period.month):
@@ -270,14 +275,6 @@ def update_metrics():
         except FileExistsError as e:
             logging.error(f"Error getting data for site {site_id}, {e}")
             continue
-
-
-def visitors_details_os_versions(site_id, period):
-    """Get the details of OS used by visitors for a given site and period"""
-    pars = ma.format.json | ma.idSite.one_or_more(site_id) | ma.date.today | period
-    qry_result = api.DevicesDetection().getOsVersions(pars)
-
-    return qry_result.json()
 
 
 if __name__ == "__main__":
