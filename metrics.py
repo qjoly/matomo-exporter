@@ -2,7 +2,7 @@ from prometheus_client import Gauge
 
 NUMBER_SITES = Gauge("number_of_sites", "Number of sites")
 
-NUMBER_VISITS = Gauge("number_of_visits_current_day", "Number of visits", ["site_name", "period"])
+NUMBER_VISITS = Gauge("number_of_visits", "Number of visits", ["site_name", "period"])
 NUMBER_UNIQ_VISITORS = Gauge(
     "number_uniq_visitors", "Number of visits", ["site_name", "period"]
 )
