@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/qjoly/matomo-exporter:latest
+    image: ghcr.io/qjoly/matomo-exporter:unstable
     restart: always
     ports:
       - 9000:9000
