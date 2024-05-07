@@ -1,0 +1,44 @@
+name: Docker Image Build
+
+on:
+    push:
+        branches:
+            - main
+        tags:
+            - v*
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v2
+
+            - name: force owner name to lowercase
+              run: |
+                  owner=$(echo $reponame | cut -d'/' -f1 | tr '[:upper:]' '[:lower:]')
+                  echo "owner=$owner" >>${GITHUB_ENV}
+              env:
+                  reponame: "${{ github.repository }}"
+
+            - name: Login to Github Container Registry
+              run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            - name: Build and push Docker image with unstable tag
+              if: github.ref == 'refs/heads/main'
+              run: |
+                  docker build -t ghcr.io/${owner}/matomo-exporter:unstable .
+                  docker push ghcr.io/${owner}/matomo-exporter:unstable
+
+            - name: Build and push Docker image with version tag
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: |
+                    version=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+                    docker build -t ghcr.io/${owner}/matomo-exporter:${version} .
+                    docker push ghcr.io/${owner}/matomo-exporter:${version}
