@@ -33,3 +33,9 @@ NUMBER_VISITORS_PER_COUNTRY = Gauge(
     "Number of visitors per country",
     ["site_name", "country", "period"],
 )
+
+NUMBER_VISITORS_PER_REGION = Gauge(
+    "number_of_visitors_per_region",
+    "Number of visitors per region",
+    ["site_name", "region", "period", "country", "latitude", "longitude"],
+)

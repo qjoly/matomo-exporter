@@ -10,6 +10,8 @@ import time
 import argparse
 import matomo_api as ma
 from prometheus_client import start_http_server
+from geopy.geocoders import Nominatim
+
 from metrics import (
     NUMBER_SITES,
     NUMBER_VISITS,
@@ -23,7 +25,9 @@ from metrics import (
     NUMBER_VISITS_PER_PAGE,
     NUMBER_VISITORS_PER_OS_VERSION,
     NUMBER_VISITORS_PER_COUNTRY,
+    NUMBER_VISITORS_PER_REGION,
 )
+
 import logging
 
 ############
@@ -207,6 +211,37 @@ def get_most_visited_pages(site_id, period):
     return dict_data
 
 
+def get_regions(site_id, period):
+    """Get the details of country used by visitors for a given site and period"""
+    pars = (
+        ma.format.json
+        | ma.translateColumnNames()
+        | ma.idSite.one_or_more(site_id)
+        | ma.date.today
+        | period
+    )
+    qry_result = api.UserCountry().getRegion(pars)
+    return qry_result.json()
+
+def get_coordinates(country, region=None):
+    geolocator = Nominatim(user_agent="geo_locator")
+    location_query = country
+    if region:
+        location_query += f", {region}"
+    try:
+        location = geolocator.geocode(location_query)
+    except TypeError:
+        location = None
+        logging.error("Error getting coordinates for %s", location_query)
+        return 0, 0
+    except Exception as e:
+        logging.error("Error getting coordinates for %s, %s", location_query, e)
+        return 0, 0
+    if location:
+        return location.latitude, location.longitude
+    else:
+        return 0, 0
+
 def update_metrics():
     """Update the Prometheus metrics with the data from the Matomo API"""
     NUMBER_SITES.set(get_number_of_sites())
@@ -215,15 +250,22 @@ def update_metrics():
         try:
             site_name = get_name_of_site(site_id)
 
-            for metric in [["day", ma.date.today], ["previous_day", ma.date.yesterday]]:
-                site_data = get_number_of_visits(site_id, metric[1])
+            for metric in [
+                ["day", ma.date.today, ma.period.day],
+                ["previous_day", ma.date.yesterday, ma.period.day],
+                ["week", ma.date.today, ma.period.week],
+                ["month", ma.date.today, ma.period.month],
+                ["year", ma.date.today, ma.period.year],
+            ]:
+                site_data = get_number_of_visits(site_id, metric[1], metric[2])
 
                 NUMBER_VISITS.labels(site_name, metric[0]).set(
                     site_data.get("nb_visits")
                 )
-                NUMBER_UNIQ_VISITORS.labels(site_name, metric[0]).set(
-                    site_data.get("nb_uniq_visitors")
-                )
+                if isinstance(site_data.get("nb_uniq_visitors"), int):
+                    NUMBER_UNIQ_VISITORS.labels(site_name, metric[0]).set(
+                        site_data.get("nb_uniq_visitors")
+                    )
                 NUMBER_BOUNCING_RATE.labels(site_name, metric[0]).set(
                     site_data.get("bounce_count")
                 )
@@ -249,6 +291,7 @@ def update_metrics():
             for metric in [
                 ["day", ma.period.day],
                 ["month", ma.period.month],
+                ["week", ma.period.week],
                 ["year", ma.period.year],
             ]:
                 for country_visitor in visitors_details_country(site_id, metric[1]):
@@ -263,6 +306,21 @@ def update_metrics():
                     NUMBER_VISITS_PER_PAGE.labels(site_name, page, metric[0]).set(
                         visits
                     )
+                for region in get_regions(site_id, metric[1]):   
+                    try: 
+                        coords = get_coordinates(region.get("country_name"), region.get("region"))
+                    except TypeError:
+                        coords = (0, 0)
+                        logging.error("Error getting coordinates for %s", region.get("region"))
+                    NUMBER_VISITORS_PER_REGION.labels(
+                        site_name,
+                        region.get("region"),
+                        metric[0],
+                        region.get("country"),
+                        coords[0],
+                        coords[1],
+                    ).set(region.get("nb_visits"))
+                    get_coordinates(region.get("country_name"), region.get("region"))
 
         except FileExistsError as e:
             logging.error("Error getting data for site %s, %s", site_id, e)
@@ -273,8 +331,6 @@ if __name__ == "__main__":
     """Main function"""
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
-
-    print(visitors_details_country(1, ma.period.month))
 
     while True:
         update_metrics()
