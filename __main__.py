@@ -224,7 +224,7 @@ def get_regions(site_id, period):
     return qry_result.json()
 
 def get_coordinates(country, region=None):
-    geolocator = Nominatim(user_agent="geo_locator")
+    geolocator = Nominatim(user_agent="geo_locator", timeout=300)
     location_query = country
     if region:
         location_query += f", {region}"
@@ -273,21 +273,6 @@ def update_metrics():
                     site_data.get("nb_actions")
                 )
 
-            site_data_current = get_number_of_visits_current(site_id)
-            NUMBER_VISITS.labels(site_name, "day").set(
-                site_data_current.get("nb_visits")
-            )
-            NUMBER_UNIQ_VISITORS.labels(site_name, "day").set(
-                site_data_current.get("nb_uniq_visitors")
-            )
-            NUMBER_BOUNCING_RATE.labels(site_name, "day").set(
-                site_data_current.get("bounce_count")
-            )
-
-            NUMBER_ACTIONS.labels(site_name, "day").set(
-                site_data_current.get("nb_actions")
-            )
-
             for metric in [
                 ["day", ma.period.day],
                 ["month", ma.period.month],
@@ -320,7 +305,6 @@ def update_metrics():
                         coords[0],
                         coords[1],
                     ).set(region.get("nb_visits"))
-                    get_coordinates(region.get("country_name"), region.get("region"))
 
         except FileExistsError as e:
             logging.error("Error getting data for site %s, %s", site_id, e)
