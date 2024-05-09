@@ -66,7 +66,9 @@ parser.add_argument("--token", help="Specify the Matomo token")
 parser.add_argument("--port", help="Specify the port")
 parser.add_argument("--ip", help="Specify the IP address")
 parser.add_argument("--scrape_interval", help="Specify the scrape interval")
-parser.add_argument("--concurrent_threads", help="Specify the number of concurrent threads")
+parser.add_argument(
+    "--concurrent_threads", help="Specify the number of concurrent threads"
+)
 args = parser.parse_args()
 
 URL = args.url if args.url else os.environ.get("MATOMO_URL")
@@ -344,6 +346,11 @@ def update_metrics():
 
 
 if __name__ == "__main__":
+    logging.info("Scraping interval: %s", SCRAPE_INTERVAL)
+    logging.info("Concurrent threads: %s", CONCURRENT_THREADS)
+    logging.info("Matomo URL: %s", URL)
+    logging.info("Log level: %s", LOG_LEVEL)
+
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
 
