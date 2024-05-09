@@ -29,6 +29,7 @@ from metrics import (
 )
 
 import logging
+import threading
 
 ############
 # LOGGING  #
@@ -54,6 +55,7 @@ logging.basicConfig(level=LEVEL, format="%(asctime)s - %(message)s")
 DEFAULT_PORT = 9000
 DEFAULT_SCRAPE_INTERVAL = 30
 DEFAULT_IP = "0.0.0.0"
+DEFAULT_CONCURRENT_THREADS = 4
 
 #############
 # ARGUMENTS #
@@ -64,6 +66,7 @@ parser.add_argument("--token", help="Specify the Matomo token")
 parser.add_argument("--port", help="Specify the port")
 parser.add_argument("--ip", help="Specify the IP address")
 parser.add_argument("--scrape_interval", help="Specify the scrape interval")
+parser.add_argument("--concurrent_threads", help="Specify the number of concurrent threads")
 args = parser.parse_args()
 
 URL = args.url if args.url else os.environ.get("MATOMO_URL")
@@ -95,6 +98,15 @@ elif os.environ.get("SCRAPE_INTERVAL"):
     SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL"))
 else:
     SCRAPE_INTERVAL = DEFAULT_SCRAPE_INTERVAL
+
+# Set the number of concurrent threads
+if args.concurrent_threads:
+    CONCURRENT_THREADS = int(args.concurrent_threads)
+elif os.environ.get("CONCURRENT_THREADS"):
+    CONCURRENT_THREADS = int(os.environ.get("CONCURRENT_THREADS"))
+else:
+    CONCURRENT_THREADS = DEFAULT_CONCURRENT_THREADS
+
 
 if not URL or not TOKEN:
     print("Error: MATOMO_URL or MATOMO_TOKEN environment variables are not set.")
@@ -132,37 +144,25 @@ def get_all_sites_ids():
     return [site.get("idsite") for site in qry_result.json()]
 
 
-def get_number_of_visits(site_id, day, period=ma.period.day):
+def get_number_of_visits(site_id, date, period=ma.period.day):
     """Get the number of visits yesterday for a given site"""
     pars = (
         ma.format.json
         | ma.translateColumnNames()
         | ma.idSite.one_or_more(site_id)
-        | day
+        | date
         | period
     )
     qry_result = api.VisitsSummary().get(pars)
     return qry_result.json()
 
 
-def get_number_of_visits_current(site_id):
+def get_all_pages(site_id, date, period):
     pars = (
         ma.format.json
         | ma.translateColumnNames()
         | ma.idSite.one_or_more(site_id)
-        | ma.date.today
-        | ma.period.day
-    )
-    qry_result = api.VisitsSummary().get(pars)
-    return qry_result.json()
-
-
-def get_all_pages(site_id, period):
-    pars = (
-        ma.format.json
-        | ma.translateColumnNames()
-        | ma.idSite.one_or_more(site_id)
-        | ma.date.today
+        | date
         | period
         | ma.expanded(True)
     )
@@ -170,24 +170,24 @@ def get_all_pages(site_id, period):
     return qry_result.json()
 
 
-def visitors_details_os_versions(site_id, period):
+def visitors_details_os_versions(site_id, date, period):
     """Get the details of OS used by visitors for a given site and period"""
-    pars = ma.format.json | ma.idSite.one_or_more(site_id) | ma.date.today | period
+    pars = ma.format.json | ma.idSite.one_or_more(site_id) | date | period
     qry_result = api.DevicesDetection().getOsVersions(pars)
 
     return qry_result.json()
 
 
-def visitors_details_country(site_id, period):
+def visitors_details_country(site_id, date, period):
     """Get the details of country used by visitors for a given site and period"""
-    pars = ma.format.json | ma.idSite.one_or_more(site_id) | ma.date.today | period
+    pars = ma.format.json | ma.idSite.one_or_more(site_id) | date | period
     qry_result = api.UserCountry().getCountry(pars)
 
     return qry_result.json()
 
 
-def get_most_visited_pages(site_id, period):
-    data = get_all_pages(site_id, period)
+def get_most_visited_pages(site_id, date, period):
+    data = get_all_pages(site_id, date, period)
 
     dict_data = {}
 
@@ -211,17 +211,18 @@ def get_most_visited_pages(site_id, period):
     return dict_data
 
 
-def get_regions(site_id, period):
+def get_regions(site_id, date, period):
     """Get the details of country used by visitors for a given site and period"""
     pars = (
         ma.format.json
         | ma.translateColumnNames()
         | ma.idSite.one_or_more(site_id)
-        | ma.date.today
+        | date
         | period
     )
     qry_result = api.UserCountry().getRegion(pars)
     return qry_result.json()
+
 
 def get_coordinates(country, region=None):
     geolocator = Nominatim(user_agent="geo_locator", timeout=300)
@@ -242,6 +243,7 @@ def get_coordinates(country, region=None):
     else:
         return 0, 0
 
+
 def update_metrics():
     """Update the Prometheus metrics with the data from the Matomo API"""
     NUMBER_SITES.set(get_number_of_sites())
@@ -250,13 +252,7 @@ def update_metrics():
         try:
             site_name = get_name_of_site(site_id)
 
-            for metric in [
-                ["day", ma.date.today, ma.period.day],
-                ["previous_day", ma.date.yesterday, ma.period.day],
-                ["week", ma.date.today, ma.period.week],
-                ["month", ma.date.today, ma.period.month],
-                ["year", ma.date.today, ma.period.year],
-            ]:
+            def update_metrics_thread(site_id, site_name, metric):
                 site_data = get_number_of_visits(site_id, metric[1], metric[2])
 
                 NUMBER_VISITS.labels(site_name, metric[0]).set(
@@ -272,36 +268,72 @@ def update_metrics():
                 NUMBER_ACTIONS.labels(site_name, metric[0]).set(
                     site_data.get("nb_actions")
                 )
-
-            for metric in [
-                ["day", ma.period.day],
-                ["month", ma.period.month],
-                ["week", ma.period.week],
-                ["year", ma.period.year],
-            ]:
-                for country_visitor in visitors_details_country(site_id, metric[1]):
+                for country_visitor in visitors_details_country(
+                    site_id, metric[1], metric[2]
+                ):
                     NUMBER_VISITORS_PER_COUNTRY.labels(
                         site_name, country_visitor.get("label"), metric[0]
                     ).set(country_visitor.get("nb_visits"))
-                for os_visitor in visitors_details_os_versions(site_id, metric[1]):
+                for os_visitor in visitors_details_os_versions(
+                    site_id, metric[1], metric[2]
+                ):
                     NUMBER_VISITORS_PER_OS_VERSION.labels(
                         site_name, os_visitor.get("label"), metric[0]
                     ).set(os_visitor.get("nb_visits"))
-                for page, visits in get_most_visited_pages(site_id, metric[1]).items():
+                for page, visits in get_most_visited_pages(
+                    site_id, metric[1], metric[2]
+                ).items():
                     NUMBER_VISITS_PER_PAGE.labels(site_name, page, metric[0]).set(
                         visits
                     )
-                for region in get_regions(site_id, metric[1]):   
-                    try: 
-                        coords = get_coordinates(region.get("country_name"), region.get("region"))
+
+            threads = []
+            for metric in [
+                ["day", ma.date.today, ma.period.day],
+                ["previous_day", ma.date.yesterday, ma.period.day],
+                ["week", ma.date.today, ma.period.week],
+                ["month", ma.date.today, ma.period.month],
+                ["year", ma.date.today, ma.period.year],
+            ][
+                :CONCURRENT_THREADS
+            ]:  # Limit to 4 threads
+                t = threading.Thread(
+                    target=update_metrics_thread, args=(site_id, site_name, metric)
+                )
+                threads.append(t)
+                t.start()
+
+            for t in threads:
+                # Wait for all threads to finish
+                t.join()
+
+            for metric in [
+                ["day", ma.date.today, ma.period.day],
+                ["week", ma.date.today, ma.period.week],
+                ["month", ma.date.today, ma.period.month],
+                ["year", ma.date.today, ma.period.year],
+            ]:
+
+                for region in get_regions(site_id, metric[1], metric[2]):
+                    try:
+                        coords = get_coordinates(
+                            region.get("country_name"), region.get("region")
+                        )
+                    except AttributeError:
+                        coords = (0, 0)
+                        logging.error(
+                            "Error getting coordinates for %s", region.get("region")
+                        )
                     except TypeError:
                         coords = (0, 0)
-                        logging.error("Error getting coordinates for %s", region.get("region"))
+                        logging.error(
+                            "Error getting coordinates for %s", region.get("region")
+                        )
                     NUMBER_VISITORS_PER_REGION.labels(
                         site_name,
                         region.get("region"),
                         metric[0],
-                        region.get("country"),
+                        region.get("country_name"),
                         coords[0],
                         coords[1],
                     ).set(region.get("nb_visits"))
@@ -312,7 +344,6 @@ def update_metrics():
 
 
 if __name__ == "__main__":
-    """Main function"""
     start_http_server(port=PORT, addr=IP)
     logging.info("Server started, listening on IP: %s:%s", IP, PORT)
 
