@@ -14,6 +14,76 @@
 
 This project is a Python script that exports data from a Matomo instance to Prometheus. It is designed to be run as a standalone script that fetches data from the Matomo API and exposes it as Prometheus metrics.
 
+## How to run
+
+- Create a docker-compose file with the following content:
+
+```yaml
+services:
+  matomo-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/qjoly/matomo-exporter:1.0.0
+    restart: always
+    ports:
+      - 9000:9000
+    env_file: .env
+    environment:
+      - LOG_LEVEL=DEBUG
+      - SCRAPE_INTERVAL=60
+```
+
+- Create a `.env` file with the following content using your Matomo URL and token:
+
+```conf
+MATOMO_URL=https://matomo.yourdomain.com
+MATOMO_TOKEN=yourtoken
+```
+
+Note: You can get your token by going to your Matomo instance on path `/index.php?module=UsersManager&action=userSecurity` or in the `Auth tokens` section of the `Security` tab.
+
+- Run the container with the following command:
+
+```bash
+docker-compose up -d
+```
+
+- Access the metrics on `http://localhost:9000/metrics`.
+
+## Configuration
+
+You can configure the exporter using environment variables or arguments.
+
+The following environment variables are available:
+
+| Environment variable | Argument | Description | Default |
+| --- | --- | --- | --- |
+| `MATOMO_URL` | `--url` | Matomo URL | None |
+| `MATOMO_TOKEN` | `--token` | Matomo token | None |
+| `LOG_LEVEL` | None | Log level | `INFO` |	
+| `SCRAPE_INTERVAL` | `--scrape-interval` | Scrape interval in seconds | `60` |
+| `PORT` | `--port` | Port to expose the metrics | `9000` |
+| `IP` | `--ip` | IP to expose the metrics | `0.0.0.0` |
+| `CONCURRENT_THREADS` | `--concurrent-threads` | Number of concurrent threads | `4` |
+
+## Exported metrics
+
+The following metrics are exported:
+
+| Metric | Description | Labels |
+| --- | --- | --- |
+| `number_of_sites` | Number of sites | |
+| `number_of_visits` | Number of visits | `site_name`, `period` |
+| `number_uniq_visitors` | Number of unique visitors | `site_name`, `period` |
+| `number_bouncing_rate` | Bouncing rate | `site_name`, `period` |
+| `number_of_actions` | Number of actions | `site_name`, `period` |
+| `number_of_visits_per_page` | Number of visits per page | `site_name`, `page`, `period` |
+| `number_of_visitors_per_os_version` | Number of visitors per OS version | `site_name`, `os_version`, `period` |
+| `number_of_visitors_per_country` | Number of visitors per country | `site_name`, `country`, `period` |
+| `number_of_visitors_per_region` | Number of visitors per region | `site_name`, `region`, `period`, `country`, `latitude`, `longitude` |
+
+
 ##  Contributing
 
 Contributions are welcome! Here are several ways you can contribute:
@@ -58,3 +128,48 @@ Contributions are welcome! Here are several ways you can contribute:
 </details>
 
 ---
+
+
+```python
+""" Metrics for the Matomo exporter """
+
+from prometheus_client import Gauge
+
+NUMBER_SITES = Gauge("number_of_sites", "Number of sites")
+
+NUMBER_VISITS = Gauge("number_of_visits", "Number of visits", ["site_name", "period"])
+NUMBER_UNIQ_VISITORS = Gauge(
+    "number_uniq_visitors", "Number of visits", ["site_name", "period"]
+)
+
+NUMBER_BOUNCING_RATE = Gauge(
+    "number_bouncing_rate", "Bouncing rate", ["site_name", "period"]
+)
+NUMBER_ACTIONS = Gauge(
+    "number_of_actions", "Number of actions", ["site_name", "period"]
+)
+
+NUMBER_VISITS_PER_PAGE = Gauge(
+    "number_of_visits_per_page",
+    "Number of visits per page",
+    ["site_name", "page", "period"],
+)
+
+NUMBER_VISITORS_PER_OS_VERSION = Gauge(
+    "number_of_visitors_per_os_version",
+    "Number of visitors per OS version",
+    ["site_name", "os_version", "period"],
+)
+
+NUMBER_VISITORS_PER_COUNTRY = Gauge(
+    "number_of_visitors_per_country",
+    "Number of visitors per country",
+    ["site_name", "country", "period"],
+)
+
+NUMBER_VISITORS_PER_REGION = Gauge(
+    "number_of_visitors_per_region",
+    "Number of visitors per region",
+    ["site_name", "region", "period", "country", "latitude", "longitude"],
+)
+```
