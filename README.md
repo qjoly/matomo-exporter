@@ -12,7 +12,9 @@
 
 ## Matomo Exporter
 
-This project is a Python script that exports data from a Matomo instance to Prometheus. It is designed to be run as a standalone script that fetches data from the Matomo API and exposes it as Prometheus metrics.
+This project is a Python script that exports data from a Matomo instance to Prometheus. It is designed to be as simple as possible to use and deploy in a container.
+
+Since Matomo works with 'period' (day, week, month, year), the exporter will export the data for all types of periods and use labels to differentiate them.
 
 ## How to run
 
