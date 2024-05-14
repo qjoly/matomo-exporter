@@ -24,7 +24,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
+        "uid": "edlpr3sye8u0wb"
       },
       "fieldConfig": {
         "defaults": {
@@ -68,7 +68,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -77,7 +77,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "number_of_visits{site_name=\"$site\", period=\"previous_day\"}",
+          "expr": "number_of_visits{site_name=\"$site\", period=\"$period\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -94,7 +94,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
+        "uid": "edlpr3sye8u0wb"
       },
       "fieldConfig": {
         "defaults": {
@@ -138,7 +138,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -147,7 +147,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "number_of_visits{site_name=\"$site\", period=\"day\"}",
+          "expr": "number_of_visits{site_name=\"$site\", period=\"$period\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -162,10 +162,7 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
-      },
+      "datasource": {},
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -248,7 +245,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "number_uniq_visitors{job=\"matomo\", site_name=\"$site\", period=\"previous_day\"}",
+          "expr": "number_uniq_visitors{job=\"matomo\", site_name=\"$site\", period=\"$period\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -263,10 +260,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
-      },
+      "datasource": {},
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -349,7 +343,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "number_of_visits{job=\"matomo\", site_name=\"$site\", period=\"day\"}",
+          "expr": "number_of_visits{job=\"matomo\", site_name=\"$site\", period=\"$period\"}",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -366,7 +360,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
+        "uid": "edlpr3sye8u0wb"
       },
       "fieldConfig": {
         "defaults": {
@@ -427,7 +421,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -437,7 +431,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "number_uniq_visitors{site_name=\"une-tasse-de.cafe\", period=\"day\"} / number_of_visits{site_name=\"une-tasse-de.cafe\", period=\"day\"}",
+          "expr": "number_uniq_visitors{site_name=\"une-tasse-de.cafe\", period=\"$period\"} / number_of_visits{site_name=\"une-tasse-de.cafe\", period=\"$period\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -455,7 +449,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
+        "uid": "edlpr3sye8u0wb"
       },
       "fieldConfig": {
         "defaults": {
@@ -508,7 +502,7 @@
         },
         "showHeader": false
       },
-      "pluginVersion": "10.4.2",
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -517,7 +511,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "number_of_visit_per_page{site_name=\"$site\", period=\"day\"}",
+          "expr": "number_of_visits_per_page{site_name=\"$site\", period=\"$period\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -582,261 +576,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": true,
-            "inspect": false
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 4,
-        "x": 4,
-        "y": 6
-      },
-      "id": 8,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": false,
-          "fields": [],
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": false
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "ddkvomd1wge80d"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "number_of_visit_per_page{site_name=\"$site\", period=\"month\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Most visited pages in the month",
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "page",
-                "Value"
-              ]
-            }
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Value": {
-                "aggregations": [
-                  "max"
-                ],
-                "operation": "aggregate"
-              },
-              "page": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "fields": {},
-            "sort": [
-              {
-                "desc": true,
-                "field": "Value (max)"
-              }
-            ]
-          }
-        },
-        {
-          "id": "limit",
-          "options": {}
-        }
-      ],
-      "transparent": true,
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": false,
-            "inspect": false
-          },
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 4,
-        "x": 8,
-        "y": 6
-      },
-      "id": 4,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "enablePagination": false,
-          "fields": [],
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
-        "showHeader": false
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "ddkvomd1wge80d"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "number_of_visit_per_page{site_name=\"$site\", period=\"year\"}",
-          "format": "table",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Most visited pages in the year",
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "page",
-                "Value"
-              ]
-            }
-          }
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Value": {
-                "aggregations": [
-                  "max"
-                ],
-                "operation": "aggregate"
-              },
-              "page": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "fields": {},
-            "sort": [
-              {
-                "desc": true,
-                "field": "Value (max)"
-              }
-            ]
-          }
-        },
-        {
-          "id": "limit",
-          "options": {}
-        }
-      ],
-      "transparent": true,
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "ddkvomd1wge80d"
+        "uid": "edlpr3sye8u0wb"
       },
       "fieldConfig": {
         "defaults": {
@@ -856,9 +596,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 7,
-        "x": 12,
+        "h": 9,
+        "w": 6,
+        "x": 4,
         "y": 6
       },
       "id": 9,
@@ -879,7 +619,7 @@
             "lastNotNull"
           ],
           "fields": "/^Value \\(lastNotNull\\)$/",
-          "limit": 15,
+          "limit": 10,
           "values": true
         },
         "tooltip": {
@@ -896,7 +636,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "number_of_visitors_per_os_version{site_name=\"une-tasse-de.cafe\"}",
+          "expr": "number_of_visitors_per_os_version{site_name=\"une-tasse-de.cafe\", period=\"$period\"}",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -963,6 +703,206 @@
       ],
       "transparent": true,
       "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "edlpr3sye8u0wb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 10,
+        "y": 6
+      },
+      "id": 10,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.4,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "field": "Value (lastNotNull)",
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "coords"
+            },
+            "name": "Layer 1",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 50.09985,
+          "lon": -28.132558,
+          "zoom": 3.04
+        }
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ddkvomd1wge80d"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "number_of_visitors_per_region{site_name=\"une-tasse-de.cafe\", period=\"$period\"}",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "OS Versions",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "byVariable": false,
+            "include": {
+              "names": [
+                "country",
+                "latitude",
+                "longitude",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Value": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "country": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "groupby"
+              },
+              "os_version": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "page": {
+                "aggregations": [],
+                "operation": "groupby"
+              }
+            }
+          }
+        },
+        {
+          "disabled": true,
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Value (lastNotNull)"
+              }
+            ]
+          }
+        },
+        {
+          "disabled": true,
+          "id": "limit",
+          "options": {
+            "limitField": 15
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "geomap"
     }
   ],
   "schemaVersion": 39,
@@ -998,6 +938,33 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "month",
+          "value": "month"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "edlpr3sye8u0wb"
+        },
+        "definition": "label_values(number_of_visits,period)",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "period",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(number_of_visits,period)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -1009,6 +976,6 @@
   "timezone": "browser",
   "title": "Matomo",
   "uid": "edkvp6mw1xcsgc",
-  "version": 24,
+  "version": 4,
   "weekStart": ""
 }
