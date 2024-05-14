@@ -721,7 +721,6 @@
               "viz": false
             }
           },
-          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -778,8 +777,8 @@
                 "size": {
                   "field": "Value (lastNotNull)",
                   "fixed": 5,
-                  "max": 15,
-                  "min": 2
+                  "max": 20,
+                  "min": 5
                 },
                 "symbol": {
                   "fixed": "img/icons/marker/circle.svg",
@@ -799,7 +798,8 @@
               }
             },
             "location": {
-              "mode": "coords"
+              "lookup": "country",
+              "mode": "lookup"
             },
             "name": "Layer 1",
             "tooltip": true,
@@ -810,11 +810,13 @@
           "mode": "details"
         },
         "view": {
-          "allLayers": true,
-          "id": "coords",
+          "allLayers": false,
+          "id": "fit",
+          "lastOnly": false,
           "lat": 50.09985,
+          "layer": "Layer 1",
           "lon": -28.132558,
-          "zoom": 3.04
+          "zoom": 15
         }
       },
       "pluginVersion": "10.4.3",
@@ -837,22 +839,8 @@
           "useBackend": false
         }
       ],
-      "title": "OS Versions",
+      "title": "Map of visitors",
       "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "country",
-                "latitude",
-                "longitude",
-                "Value"
-              ]
-            }
-          }
-        },
         {
           "id": "groupBy",
           "options": {
@@ -869,6 +857,19 @@
                 ],
                 "operation": "groupby"
               },
+              "latitude": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "longitude": {
+                "aggregations": [
+                  "lastNotNull",
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
               "os_version": {
                 "aggregations": [],
                 "operation": "groupby"
@@ -878,26 +879,6 @@
                 "operation": "groupby"
               }
             }
-          }
-        },
-        {
-          "disabled": true,
-          "id": "sortBy",
-          "options": {
-            "fields": {},
-            "sort": [
-              {
-                "desc": true,
-                "field": "Value (lastNotNull)"
-              }
-            ]
-          }
-        },
-        {
-          "disabled": true,
-          "id": "limit",
-          "options": {
-            "limitField": 15
           }
         }
       ],
@@ -941,9 +922,9 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "month",
-          "value": "month"
+          "selected": true,
+          "text": "day",
+          "value": "day"
         },
         "datasource": {
           "type": "prometheus",
@@ -976,6 +957,6 @@
   "timezone": "browser",
   "title": "Matomo",
   "uid": "edkvp6mw1xcsgc",
-  "version": 4,
+  "version": 8,
   "weekStart": ""
 }
